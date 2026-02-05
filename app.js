@@ -1,7 +1,7 @@
 // Supabase configuration - replace with your values
 const SUPABASE_URL = 'https://ypvgfmxnjjlymxifpuyc.supabase.co';
 const SUPABASE_KEY = 'sbp_32bc8f2c98f8555da933144021b9d73658b5cd12';
-const SHARED_PASSWORD = 'N7h0ypPvJio5wgo6'; // Change this to your shared password
+const SHARED_PASSWORD = 'doug_rocks'; // Change this to your shared password
 
 let supabase;
 let currentUser = null;
