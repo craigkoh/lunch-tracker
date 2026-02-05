@@ -9,22 +9,29 @@ let currentRound = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
+    alert('App initializing...'); // Debug
+    
     // Check if Supabase is configured
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+        alert('Supabase not configured'); // Debug
         showSetupNeeded();
         return;
     }
 
     // Initialize Supabase
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    alert('Supabase initialized'); // Debug
 
     // Check for existing session
     const savedName = localStorage.getItem('lunchUserName');
     const savedLower = localStorage.getItem('lunchUserLower');
     if (savedName && savedLower) {
+        alert('Found existing session: ' + savedName); // Debug
         currentUser = savedLower;
         showMainScreen(savedName);
         loadData();
+    } else {
+        alert('No existing session'); // Debug
     }
 });
 
@@ -45,8 +52,10 @@ function showSetupNeeded() {
 }
 
 async function login() {
+    alert('Login clicked!'); // Debug
     const name = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
+    alert('Name: ' + name + ', Password: ' + password); // Debug
 
     if (!name || !password) {
         document.getElementById('login-error').textContent = 'Please fill in both fields';
@@ -55,12 +64,14 @@ async function login() {
 
     if (password !== SHARED_PASSWORD) {
         document.getElementById('login-error').textContent = 'Incorrect password';
+        alert('Wrong password: ' + password + ' != ' + SHARED_PASSWORD); // Debug
         return;
     }
 
     currentUser = name.toLowerCase();
     localStorage.setItem('lunchUserName', name);
     localStorage.setItem('lunchUserLower', currentUser);
+    alert('Login successful, showing main screen'); // Debug
     showMainScreen(name);
     await loadData();
 }
