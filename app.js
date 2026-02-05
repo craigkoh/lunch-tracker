@@ -19,10 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Check for existing session
-    const savedUser = localStorage.getItem('lunchUser');
-    if (savedUser) {
-        currentUser = savedUser;
-        showMainScreen();
+    const savedName = localStorage.getItem('lunchUserName');
+    const savedLower = localStorage.getItem('lunchUserLower');
+    if (savedName && savedLower) {
+        currentUser = savedLower;
+        showMainScreen(savedName);
         loadData();
     }
 });
@@ -58,24 +59,27 @@ async function login() {
     }
 
     currentUser = name;
-    localStorage.setItem('lunchUser', name);
-    showMainScreen();
+    const currentUserLower = name.toLowerCase();
+    localStorage.setItem('lunchUserName', name);
+    localStorage.setItem('lunchUserLower', currentUserLower);
+    showMainScreen(name);
     await loadData();
 }
 
 function logout() {
     currentUser = null;
-    localStorage.removeItem('lunchUser');
+    localStorage.removeItem('lunchUserName');
+    localStorage.removeItem('lunchUserLower');
     document.getElementById('main-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
 }
 
-function showMainScreen() {
+function showMainScreen(displayName) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-screen').classList.remove('hidden');
-    document.getElementById('current-user').textContent = `Hi, ${currentUser}!`;
+    document.getElementById('current-user').textContent = `Hi, ${displayName}!`;
 }
 
 function showTab(tabName) {
@@ -166,7 +170,7 @@ function updateDashboard() {
     }
 
     const picker = currentRound.picker;
-    const isPicker = currentUser === picker;
+    const isPicker = currentUser === picker.toLowerCase();
 
     document.getElementById('current-picker').textContent = picker + (isPicker ? ' (You!)' : '');
     document.getElementById('instruction').textContent = isPicker
@@ -199,7 +203,7 @@ function hideAllPhases() {
 function renderSuggestions() {
     const container = document.getElementById('suggestion-list');
     const suggestions = currentRound.suggestions || [];
-    const isPicker = currentUser === currentRound.picker;
+    const isPicker = currentUser === currentRound.picker.toLowerCase();
 
     if (suggestions.length === 0) {
         container.innerHTML = `
@@ -274,7 +278,7 @@ function renderVetoList() {
     const container = document.getElementById('veto-list');
     const suggestions = currentRound.suggestions || [];
     const vetos = currentRound.vetos || {};
-    const isPicker = currentUser === currentRound.picker;
+    const isPicker = currentUser === currentRound.picker.toLowerCase();
 
     // Get veto count for each restaurant
     const vetoCounts = {};
@@ -284,24 +288,11 @@ function renderVetoList() {
     });
 
     // Determine if this user has vetoed
-    const userHasVetoed = Object.keys(vetos).includes(currentUser);
-
-    container.innerHTML = suggestions.map(s => {
-        const count = vetoCounts[s];
-        const isVetoed = count >= 2; // 2 vetos = eliminated
-
-        return `
-            <div class="veto-item ${isVetoed ? 'vetoed' : ''}"
-                 onclick="${!isVetoed && !isPicker && !userHasVetoed ? `vetoRestaurant('${s}')` : ''}">
-                <span>${s}</span>
-                <span class="veto-count">${isVetoed ? '❌ Vetoed' : `${count}/2 vetos`}</span>
-            </div>
-        `;
-    }).join('');
+    const userHasVetoed = Object.keys(vetos).map(k => k.toLowerCase()).includes(currentUser);
 
     // Show complete button if all non-pickers have vetoed
-    const nonPickers = ['Craig', 'Seth', 'Chris'].filter(u => u !== currentRound.picker);
-    const allVetoed = nonPickers.every(u => Object.keys(vetos).includes(u));
+    const nonPickers = ['Craig', 'Seth', 'Chris'].map(u => u.toLowerCase()).filter(u => u !== currentRound.picker.toLowerCase());
+    const allVetoed = nonPickers.every(u => Object.keys(vetos).map(k => k.toLowerCase()).includes(u));
 
     const btn = document.getElementById('complete-veto-btn');
     if (allVetoed || isPicker) {
