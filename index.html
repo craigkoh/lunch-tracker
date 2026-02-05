@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunch Veto Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="login-card">
+                <h1>🍕 Lunch Veto Tracker</h1>
+                <p class="subtitle">Enter your name and password to join</p>
+                <input type="text" id="username" placeholder="Your name">
+                <input type="password" id="password" placeholder="Shared password">
+                <button onclick="login()">Join</button>
+                <p id="login-error" class="error"></p>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="main-screen" class="screen hidden">
+            <header>
+                <h1>🍕 Lunch Veto Tracker</h1>
+                <div class="user-info">
+                    <span id="current-user"></span>
+                    <button onclick="logout()" class="secondary">Logout</button>
+                </div>
+            </header>
+
+            <nav>
+                <button class="nav-btn active" onclick="showTab('dashboard')">Dashboard</button>
+                <button class="nav-btn" onclick="showTab('restaurants')">Restaurants</button>
+                <button class="nav-btn" onclick="showTab('history')">History</button>
+            </nav>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab">
+                <div class="turn-indicator">
+                    <h2>Current Round</h2>
+                    <div class="current-picker" id="current-picker"></div>
+                    <p class="instruction" id="instruction"></p>
+                </div>
+
+                <div id="suggestion-phase" class="phase hidden">
+                    <h3>Picker: Add 3 Restaurants</h3>
+                    <div class="suggestion-list" id="suggestion-list"></div>
+                    <button onclick="startVetoPhase()" id="start-veto-btn" disabled>Start Veto Phase</button>
+                </div>
+
+                <div id="veto-phase" class="phase hidden">
+                    <h3>Veto Round</h3>
+                    <p>Tap a restaurant to veto it</p>
+                    <div class="veto-list" id="veto-list"></div>
+                    <button onclick="completeVetoPhase()" id="complete-veto-btn" class="hidden">Complete Veto</button>
+                </div>
+
+                <div id="winner-phase" class="phase hidden">
+                    <div class="winner-banner">
+                        <h3>🎉 Winner!</h3>
+                        <div id="winner-display"></div>
+                        <button onclick="startNewRound()">Start New Round</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restaurants Tab -->
+            <div id="restaurants-tab" class="tab hidden">
+                <h2>Restaurant Library</h2>
+                <div class="add-restaurant">
+                    <input type="text" id="new-restaurant" placeholder="Add new restaurant">
+                    <button onclick="addRestaurant()">Add</button>
+                </div>
+                <div class="restaurant-list" id="restaurant-list"></div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history-tab" class="tab hidden">
+                <h2>Lunch History</h2>
+                <div class="history-list" id="history-list"></div>
+                <button onclick="clearHistory()" class="danger">Clear History</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>

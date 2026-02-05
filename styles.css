@@ -1,0 +1,357 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.screen {
+    min-height: 100vh;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Login Screen */
+.login-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 400px;
+    margin: 0 auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    text-align: center;
+}
+
+.login-card h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.subtitle {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.3s;
+}
+
+.login-card input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.login-card button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.login-card button:hover {
+    transform: scale(1.02);
+}
+
+.error {
+    color: #e74c3c;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+/* Main Screen */
+header {
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#current-user {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.secondary {
+    background: #f0f0f0 !important;
+    color: #666 !important;
+    padding: 8px 16px !important;
+    font-size: 0.9rem !important;
+}
+
+nav {
+    background: white;
+    display: flex;
+    border-bottom: 1px solid #eee;
+}
+
+.nav-btn {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.nav-btn.active {
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+}
+
+.tab {
+    padding: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Turn Indicator */
+.turn-indicator {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.current-picker {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin: 1rem 0;
+}
+
+.instruction {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+/* Phases */
+.phase {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.phase h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.phase button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+.phase button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.phase button.danger {
+    background: #e74c3c;
+}
+
+/* Suggestion List */
+.suggestion-item,
+.veto-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-item .remove {
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+.veto-item {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.veto-item:hover {
+    background: #fee;
+}
+
+.veto-item.vetoed {
+    background: #e74c3c;
+    color: white;
+    text-decoration: line-through;
+}
+
+.veto-count {
+    background: #667eea;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Winner Banner */
+.winner-banner {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 12px;
+    color: white;
+}
+
+.winner-banner h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+#winner-display {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 1rem 0;
+}
+
+.winner-banner button {
+    background: white !important;
+    color: #f5576c !important;
+}
+
+/* Restaurants Tab */
+.add-restaurant {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.add-restaurant input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.add-restaurant button {
+    padding: 12px 24px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.restaurant-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.restaurant-item .delete {
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+/* History Tab */
+.history-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.history-date {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.history-winner {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #27ae60;
+    margin: 0.5rem 0;
+}
+
+.history-picker {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 1.5rem;
+    }
+
+    header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .nav-btn {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.9rem;
+    }
+}
