@@ -51,7 +51,7 @@ function showSetupNeeded() {
     `;
 }
 
-async function login() {
+function login() {
     alert('Login clicked!'); // Debug
     const name = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -73,7 +73,7 @@ async function login() {
     localStorage.setItem('lunchUserLower', currentUser);
     alert('Login successful, showing main screen'); // Debug
     showMainScreen(name);
-    await loadData();
+    loadData();
 }
 
 function logout() {
