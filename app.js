@@ -58,10 +58,9 @@ async function login() {
         return;
     }
 
-    currentUser = name;
-    const currentUserLower = name.toLowerCase();
+    currentUser = name.toLowerCase();
     localStorage.setItem('lunchUserName', name);
-    localStorage.setItem('lunchUserLower', currentUserLower);
+    localStorage.setItem('lunchUserLower', currentUser);
     showMainScreen(name);
     await loadData();
 }
