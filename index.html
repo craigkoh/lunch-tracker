@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lunch Veto Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; }
@@ -47,7 +48,6 @@
         .history-picker { color: #666; }
         .nav-buttons { display: flex; gap: 10px; }
         .logout-btn { background: #f0f0f0; color: #666; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-        .delete-btn-small { color: #e74c3c; cursor: pointer; padding: 5px 10px; }
     </style>
 </head>
 <body>
@@ -117,446 +117,555 @@
     </div>
 
     <script>
-    (function() {
-        // Configuration
-        const SUPABASE_URL = 'https://ypvgfmxnjjlymxifpuyc.supabase.co';
-        const SUPABASE_KEY = 'sbp_32bc8f2c98f8555da933144021b9d73658b5cd12';
-        const PASSWORD = 'doug_rocks';
-        const USERS = ['craig', 'seth', 'chris'];
-        const USERNAMES = ['Craig', 'Seth', 'Chris'];
+    // Global variables
+    var supabase;
+    var currentUser = null;
+    var currentRound = null;
+    var USERS = ['craig', 'seth', 'chris'];
+    var USERNAMES = ['Craig', 'Seth', 'Chris'];
+    var PASSWORD = 'doug_rocks';
+    var SUPABASE_URL = 'https://ypvgfmxnjjlymxifpuyc.supabase.co';
+    var SUPABASE_KEY = 'sbp_32bc8f2c98f8555da933144021b9d73658b5cd12';
+
+    // Initialize on load
+    window.onload = function() {
+        console.log('Window loaded');
         
-        let supabase;
-        let currentUser = null;
-        let currentRound = null;
-        
-        // Initialize
-        function init() {
-            console.log('Initializing...');
-            const saved = localStorage.getItem('lunchUser');
-            if (saved) {
-                currentUser = saved;
-                showMain();
-                setupSupabase();
-                loadAll();
-            }
-        }
-        
-        // Setup Supabase
-        function setupSupabase() {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('Supabase connected');
-            
-            supabase.channel('lunch-tracker')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, loadRound)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, loadRestaurants)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'history' }, loadHistory)
-                .subscribe();
-        }
-        
-        // Login
-        function doLogin() {
-            console.log('Login clicked');
-            const name = document.getElementById('username').value.trim().toLowerCase();
-            const password = document.getElementById('password').value;
-            
-            if (!name || !password) {
-                document.getElementById('login-error').textContent = 'Fill in both fields';
-                console.log('Missing fields');
-                return;
-            }
-            
-            if (password !== PASSWORD) {
-                document.getElementById('login-error').textContent = 'Wrong password';
-                console.log('Wrong password');
-                return;
-            }
-            
-            if (!USERS.includes(name)) {
-                document.getElementById('login-error').textContent = 'Use Craig, Seth, or Chris';
-                console.log('Invalid user');
-                return;
-            }
-            
-            currentUser = name;
-            localStorage.setItem('lunchUser', name);
+        var saved = localStorage.getItem('lunchUser');
+        if (saved) {
+            currentUser = saved;
             showMain();
-            setupSupabase();
+            connectSupabase();
             loadAll();
-            console.log('Login successful');
+        }
+    };
+
+    // Connect to Supabase
+    function connectSupabase() {
+        console.log('Connecting to Supabase...');
+        supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('Supabase connected');
+        
+        supabase.channel('lunch-tracker')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'rounds' }, function() {
+                console.log('Round changed, reloading');
+                loadRound();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, function() {
+                console.log('Restaurants changed, reloading');
+                loadRestaurants();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'history' }, function() {
+                console.log('History changed, reloading');
+                loadHistory();
+            })
+            .subscribe(function(status) {
+                console.log('Subscription status:', status);
+            });
+    }
+
+    // Login
+    document.getElementById('login-btn').onclick = function() {
+        console.log('Login clicked');
+        var name = document.getElementById('username').value.trim().toLowerCase();
+        var password = document.getElementById('password').value;
+        
+        if (!name || !password) {
+            document.getElementById('login-error').textContent = 'Fill in both fields';
+            return;
         }
         
-        function doLogout() {
-            currentUser = null;
-            localStorage.removeItem('lunchUser');
-            document.getElementById('main-screen').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+        if (password !== PASSWORD) {
+            document.getElementById('login-error').textContent = 'Wrong password';
+            return;
         }
         
-        function showMain() {
-            const displayName = USERNAMES[USERS.indexOf(currentUser)];
-            document.getElementById('current-user').textContent = displayName;
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-screen').classList.remove('hidden');
+        if (USERS.indexOf(name) === -1) {
+            document.getElementById('login-error').textContent = 'Use Craig, Seth, or Chris';
+            return;
         }
         
-        function showTab(tab) {
-            console.log('showTab:', tab);
-            // Hide all tabs
-            document.getElementById('tab-dashboard').classList.add('hidden');
-            document.getElementById('tab-restaurants').classList.add('hidden');
-            document.getElementById('tab-history').classList.add('hidden');
-            
-            // Show selected tab
-            document.getElementById('tab-' + tab).classList.remove('hidden');
-            
-            // Update nav buttons
-            document.getElementById('nav-dash').classList.remove('active');
-            document.getElementById('nav-rest').classList.remove('active');
-            document.getElementById('nav-hist').classList.remove('active');
-            
-            document.getElementById('nav-' + tab.substring(0,4)).classList.add('active');
-            
-            // Load tab data
-            if (tab === 'restaurants') loadRestaurants();
-            if (tab === 'history') loadHistory();
-        }
+        currentUser = name;
+        localStorage.setItem('lunchUser', name);
+        showMain();
+        connectSupabase();
+        loadAll();
+    };
+
+    // Logout
+    document.getElementById('logout-btn').onclick = function() {
+        currentUser = null;
+        localStorage.removeItem('lunchUser');
+        document.getElementById('main-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+    };
+
+    // Show main screen
+    function showMain() {
+        var displayName = USERNAMES[USERS.indexOf(currentUser)];
+        document.getElementById('current-user').textContent = displayName;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-screen').classList.remove('hidden');
+    }
+
+    // Tab navigation
+    document.getElementById('nav-dash').onclick = function() {
+        showTab('dashboard');
+    };
+    
+    document.getElementById('nav-rest').onclick = function() {
+        showTab('restaurants');
+    };
+    
+    document.getElementById('nav-hist').onclick = function() {
+        showTab('history');
+    };
+
+    function showTab(tab) {
+        console.log('Showing tab:', tab);
         
-        async function loadAll() {
-            await Promise.all([loadRound(), loadRestaurants(), loadHistory()]);
-        }
+        // Hide all tabs
+        document.getElementById('tab-dashboard').classList.add('hidden');
+        document.getElementById('tab-restaurants').classList.add('hidden');
+        document.getElementById('tab-history').classList.add('hidden');
         
-        async function loadRound() {
-            console.log('Loading round...');
-            const { data, error } = await supabase
-                .from('rounds')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-            
-            if (error) {
-                console.log('No round found');
-                currentRound = null;
-            } else {
-                currentRound = data;
-                console.log('Round loaded:', data);
-            }
-            updateRoundDisplay();
-        }
+        // Show selected tab
+        document.getElementById('tab-' + tab).classList.remove('hidden');
         
-        async function startNewRound() {
-            console.log('Starting new round...');
-            const { data: rounds } = await supabase
-                .from('rounds')
-                .select('picker')
-                .order('created_at', { ascending: false })
-                .limit(1);
-            
-            let lastPicker = rounds?.length ? rounds[0].picker.toLowerCase() : 'chris';
-            let idx = USERS.indexOf(lastPicker);
-            let nextPicker = USERS[(idx + 1) % USERS.length];
-            
-            const { data, error } = await supabase
-                .from('rounds')
-                .insert({
-                    picker: USERNAMES[USERS.indexOf(nextPicker)],
-                    phase: 'suggestion',
-                    suggestions: [],
-                    vetos: {},
-                    winner: null
-                })
-                .select()
-                .single();
-            
-            if (!error) {
-                currentRound = data;
+        // Update nav buttons
+        document.getElementById('nav-dash').classList.remove('active');
+        document.getElementById('nav-rest').classList.remove('active');
+        document.getElementById('nav-hist').classList.remove('active');
+        
+        document.getElementById('nav-' + tab.substring(0,4)).classList.add('active');
+        
+        // Load data
+        if (tab === 'restaurants') {
+            loadRestaurants();
+        } else if (tab === 'history') {
+            loadHistory();
+        }
+    }
+
+    // Load all data
+    function loadAll() {
+        loadRound();
+        loadRestaurants();
+        loadHistory();
+    }
+
+    // Load round
+    function loadRound() {
+        console.log('Loading round...');
+        supabase.from('rounds')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+            .then(function(result) {
+                console.log('Round result:', result);
+                if (result.error) {
+                    console.log('No round found');
+                    currentRound = null;
+                } else {
+                    currentRound = result.data;
+                }
                 updateRoundDisplay();
-                console.log('New round started');
-            } else {
-                console.log('Error starting round:', error);
-            }
+            });
+    }
+
+    // Start new round
+    document.getElementById('new-round-btn').onclick = function() {
+        startNewRound();
+    };
+
+    function startNewRound() {
+        console.log('Starting new round...');
+        
+        // Get last picker
+        supabase.from('rounds')
+            .select('picker')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .then(function(result) {
+                var lastPicker = 'chris';
+                if (result.data && result.data.length > 0) {
+                    lastPicker = result.data[0].picker.toLowerCase();
+                }
+                
+                var idx = USERS.indexOf(lastPicker);
+                var nextIdx = (idx + 1) % USERS.length;
+                var nextPicker = USERNAMES[nextIdx];
+                
+                supabase.from('rounds')
+                    .insert({
+                        picker: nextPicker,
+                        phase: 'suggestion',
+                        suggestions: [],
+                        vetos: {},
+                        winner: null
+                    })
+                    .select()
+                    .then(function(insertResult) {
+                        if (!insertResult.error) {
+                            currentRound = insertResult.data;
+                            updateRoundDisplay();
+                        }
+                    });
+            });
+    }
+
+    // Update round display
+    function updateRoundDisplay() {
+        var pickerName = currentRound ? currentRound.picker : 'Nobody';
+        var isMyTurn = currentRound && currentUser === currentRound.picker.toLowerCase();
+        
+        document.getElementById('picker-display').textContent = pickerName + (isMyTurn ? ' (You!)' : '');
+        
+        if (currentRound) {
+            document.getElementById('round-instruction').textContent = isMyTurn
+                ? "It's your turn to pick 3 places!"
+                : 'Waiting for ' + pickerName + ' to pick...';
+        } else {
+            document.getElementById('round-instruction').textContent = 'Start a new round below';
         }
         
-        function updateRoundDisplay() {
-            const pickerName = currentRound?.picker || 'Nobody';
-            const isMyTurn = currentRound && currentUser === currentRound.picker.toLowerCase();
-            
-            document.getElementById('picker-display').textContent = pickerName + (isMyTurn ? ' (You!)' : '');
-            
-            if (currentRound) {
-                document.getElementById('round-instruction').textContent = isMyTurn
-                    ? "It's your turn to pick 3 places!"
-                    : `Waiting for ${pickerName} to pick...`;
-            } else {
-                document.getElementById('round-instruction').textContent = 'Start a new round below';
-            }
-            
-            ['suggestion', 'veto', 'winner'].forEach(p => 
-                document.getElementById('phase-' + p).classList.add('hidden'));
-            
-            if (!currentRound) {
-                document.getElementById('start-veto-btn').onclick = startNewRound;
-                document.getElementById('phase-suggestion').classList.remove('hidden');
-                document.getElementById('suggestions-list').innerHTML = 
-                    '<p style="text-align:center;color:#888;padding:20px;">No active round</p>';
-                document.getElementById('start-veto-btn').textContent = 'Start New Round';
-                document.getElementById('start-veto-btn').disabled = false;
-                return;
-            }
-            
-            if (currentRound.phase === 'suggestion') {
-                renderSuggestions();
-            } else if (currentRound.phase === 'veto') {
-                renderVetoList();
-            } else if (currentRound.phase === 'winner') {
-                document.getElementById('winner-display').textContent = currentRound.winner;
-                document.getElementById('phase-winner').classList.remove('hidden');
-            }
+        // Hide all phases
+        document.getElementById('phase-suggestion').classList.add('hidden');
+        document.getElementById('phase-veto').classList.add('hidden');
+        document.getElementById('phase-winner').classList.add('hidden');
+        
+        if (!currentRound) {
+            document.getElementById('start-veto-btn').onclick = startNewRound;
+            document.getElementById('phase-suggestion').classList.remove('hidden');
+            document.getElementById('suggestions-list').innerHTML = '<p style="text-align:center;color:#888;padding:20px;">No active round</p>';
+            document.getElementById('start-veto-btn').textContent = 'Start New Round';
+            document.getElementById('start-veto-btn').disabled = false;
+            return;
         }
         
-        function renderSuggestions() {
-            const phase = document.getElementById('phase-suggestion');
-            phase.classList.remove('hidden');
-            const list = document.getElementById('suggestions-list');
-            const btn = document.getElementById('start-veto-btn');
-            
-            const suggestions = currentRound.suggestions || [];
-            const isPicker = currentUser === currentRound.picker.toLowerCase();
-            
-            if (suggestions.length === 0) {
-                list.innerHTML = isPicker 
-                    ? '<p style="text-align:center;color:#888;">Add restaurants from the library below, or type new ones:</p>'
-                    : '<p style="text-align:center;color:#888;">Waiting for picker...</p>';
-            } else {
-                list.innerHTML = suggestions.map((s, i) => 
-                    '<div class="restaurant-row"><span>' + (i+1) + '. ' + s + '</span>' +
-                    (isPicker ? '<span class="delete-btn-small" onclick="window.removeSuggestion(' + i + ')">✕</span>' : '') +
-                    '</div>'
-                ).join('');
+        if (currentRound.phase === 'suggestion') {
+            renderSuggestions();
+        } else if (currentRound.phase === 'veto') {
+            renderVetoList();
+        } else if (currentRound.phase === 'winner') {
+            document.getElementById('winner-display').textContent = currentRound.winner;
+            document.getElementById('phase-winner').classList.remove('hidden');
+        }
+    }
+
+    // Render suggestions
+    function renderSuggestions() {
+        document.getElementById('phase-suggestion').classList.remove('hidden');
+        var list = document.getElementById('suggestions-list');
+        var btn = document.getElementById('start-veto-btn');
+        
+        var suggestions = currentRound.suggestions || [];
+        var isPicker = currentUser === currentRound.picker.toLowerCase();
+        
+        if (suggestions.length === 0) {
+            list.innerHTML = isPicker 
+                ? '<p style="text-align:center;color:#888;">Add restaurants from the library below, or type new ones:</p>'
+                : '<p style="text-align:center;color:#888;">Waiting for picker...</p>';
+        } else {
+            var html = '';
+            for (var i = 0; i < suggestions.length; i++) {
+                html += '<div class="restaurant-row"><span>' + (i+1) + '. ' + suggestions[i] + '</span>';
+                if (isPicker) {
+                    html += '<span class="delete-btn" onclick="removeSuggestion(' + i + ')">✕</span>';
+                }
+                html += '</div>';
             }
-            
-            btn.textContent = suggestions.length === 3 
-                ? (isPicker ? 'Start Veto Phase' : 'Waiting...')
-                : 'Add more places (' + suggestions.length + '/3)';
-            btn.disabled = suggestions.length !== 3;
-            if (isPicker) btn.onclick = startVeto;
+            list.innerHTML = html;
         }
         
-        async function addSuggestion(name) {
-            const suggestions = [...(currentRound.suggestions || [])];
-            if (suggestions.length >= 3) return;
-            suggestions.push(name);
-            
-            const { error } = await supabase
-                .from('rounds')
-                .update({ suggestions })
-                .eq('id', currentRound.id);
-            
-            if (!error) {
-                currentRound.suggestions = suggestions;
-                renderSuggestions();
-            }
-        }
+        btn.textContent = suggestions.length === 3 
+            ? (isPicker ? 'Start Veto Phase' : 'Waiting...')
+            : 'Add more places (' + suggestions.length + '/3)';
+        btn.disabled = suggestions.length !== 3;
+        if (isPicker) btn.onclick = startVeto;
+    }
+
+    // Add suggestion
+    function addSuggestion(name) {
+        var suggestions = currentRound.suggestions ? currentRound.suggestions.slice() : [];
+        if (suggestions.length >= 3) return;
+        suggestions.push(name);
         
-        async function removeSuggestion(idx) {
-            const suggestions = currentRound.suggestions.filter((_, i) => i !== idx);
-            const { error } = await supabase
-                .from('rounds')
-                .update({ suggestions })
-                .eq('id', currentRound.id);
-            
-            if (!error) {
-                currentRound.suggestions = suggestions;
-                renderSuggestions();
-            }
-        }
-        
-        async function startVeto() {
-            const { error } = await supabase
-                .from('rounds')
+        supabase.from('rounds')
+            .update({ suggestions: suggestions })
+            .eq('id', currentRound.id)
+            .then(function(result) {
+                if (!result.error) {
+                    currentRound.suggestions = suggestions;
+                    renderSuggestions();
+                }
+            });
+    }
+
+    // Remove suggestion
+    window.removeSuggestion = function(idx) {
+        var suggestions = currentRound.suggestions.filter(function(_, i) { return i !== idx; });
+        supabase.from('rounds')
+            .update({ suggestions: suggestions })
+            .eq('id', currentRound.id)
+            .then(function(result) {
+                if (!result.error) {
+                    currentRound.suggestions = suggestions;
+                    renderSuggestions();
+                }
+            });
+    };
+
+    // Start veto phase
+    document.getElementById('start-veto-btn').onclick = function() {
+        if (document.getElementById('start-veto-btn').textContent === 'Start Veto Phase') {
+            supabase.from('rounds')
                 .update({ phase: 'veto', vetos: {} })
-                .eq('id', currentRound.id);
-            
-            if (!error) {
-                currentRound.phase = 'veto';
-                currentRound.vetos = {};
-                renderVetoList();
+                .eq('id', currentRound.id)
+                .then(function(result) {
+                    if (!result.error) {
+                        currentRound.phase = 'veto';
+                        currentRound.vetos = {};
+                        renderVetoList();
+                    }
+                });
+        } else {
+            startNewRound();
+        }
+    };
+
+    // Render veto list
+    function renderVetoList() {
+        document.getElementById('phase-veto').classList.remove('hidden');
+        var list = document.getElementById('veto-list');
+        var btn = document.getElementById('complete-veto-btn');
+        
+        var suggestions = currentRound.suggestions || [];
+        var vetos = currentRound.vetos || {};
+        var vetoed = Object.values(vetos);
+        var isPicker = currentUser === currentRound.picker.toLowerCase();
+        var hasVetoed = Object.keys(vetos).map(function(k) { return k.toLowerCase(); }).indexOf(currentUser) !== -1;
+        
+        // Count vetos per restaurant
+        var vetoCounts = {};
+        for (var i = 0; i < suggestions.length; i++) {
+            vetoCounts[suggestions[i]] = 0;
+        }
+        for (var i = 0; i < vetoed.length; i++) {
+            if (vetoCounts[vetoed[i]] !== undefined) {
+                vetoCounts[vetoed[i]]++;
             }
         }
         
-        function renderVetoList() {
-            const phase = document.getElementById('phase-veto');
-            phase.classList.remove('hidden');
-            const list = document.getElementById('veto-list');
-            const btn = document.getElementById('complete-veto-btn');
+        var html = '';
+        for (var i = 0; i < suggestions.length; i++) {
+            var s = suggestions[i];
+            var count = vetoCounts[s];
+            var isVetoed = count >= 2;
+            var canClick = !isPicker && !isVetoed && !hasVetoed;
+            var sEscaped = s.replace(/'/g, "\\'");
             
-            const suggestions = currentRound.suggestions || [];
-            const vetos = currentRound.vetos || {};
-            const vetoed = Object.values(vetos);
-            const isPicker = currentUser === currentRound.picker.toLowerCase();
-            const hasVetoed = Object.keys(vetos).map(k => k.toLowerCase()).includes(currentUser);
-            
-            const vetoCounts = {};
-            suggestions.forEach(s => vetoCounts[s] = 0);
-            vetoed.forEach(v => { if (vetoCounts[v] !== undefined) vetoCounts[v]++; });
-            
-            list.innerHTML = suggestions.map(s => {
-                const count = vetoCounts[s];
-                const isVetoed = count >= 2;
-                const canClick = !isPicker && !isVetoed && !hasVetoed;
-                const sEscaped = s.replace(/'/g, "\\'");
-                return '<div class="restaurant-row" onclick="' + (canClick ? "window.doVeto('" + sEscaped + "')" : '') + '" style="' + (canClick ? 'cursor:pointer' : '') + '">' +
-                    '<span style="' + (isVetoed ? 'text-decoration:line-through;color:#e74c3c' : '') + '">' + s + '</span>' +
-                    '<span style="background:' + (isVetoed ? '#e74c3c' : '#667eea') + ';color:white;padding:4px 12px;border-radius:20px;font-size:13px">' +
-                    (isVetoed ? '❌ Vetoed' : count + '/2 vetos') + '</span></div>';
-            }).join('');
-            
-            const nonPickers = USERS.filter(u => u !== currentRound.picker.toLowerCase());
-            const allVetoed = nonPickers.every(u => Object.keys(vetos).map(k => k.toLowerCase()).includes(u));
-            
-            if (allVetoed || isPicker) {
-                btn.classList.remove('hidden');
-                btn.disabled = !allVetoed;
-                btn.textContent = isPicker ? 'Pick Winner' : 'Waiting...';
-                if (isPicker) btn.onclick = completeVeto;
+            html += '<div class="restaurant-row"';
+            if (canClick) {
+                html += ' onclick="doVeto(\'' + sEscaped + '\')" style="cursor:pointer"';
+            }
+            html += '>';
+            if (isVetoed) {
+                html += '<span style="text-decoration:line-through;color:#e74c3c">' + s + '</span>';
             } else {
-                btn.classList.add('hidden');
+                html += '<span>' + s + '</span>';
+            }
+            html += '<span style="background:' + (isVetoed ? '#e74c3c' : '#667eea') + ';color:white;padding:4px 12px;border-radius:20px;font-size:13px">';
+            if (isVetoed) {
+                html += '❌ Vetoed';
+            } else {
+                html += count + '/2 vetos';
+            }
+            html += '</span></div>';
+        }
+        list.innerHTML = html;
+        
+        // Check if all non-pickers have vetoed
+        var nonPickers = USERS.filter(function(u) { return u !== currentRound.picker.toLowerCase(); });
+        var allVetoed = true;
+        for (var i = 0; i < nonPickers.length; i++) {
+            if (Object.keys(vetos).map(function(k) { return k.toLowerCase(); }).indexOf(nonPickers[i]) === -1) {
+                allVetoed = false;
+                break;
             }
         }
         
-        async function doVeto(restaurant) {
-            const vetos = { ...currentRound.vetos };
-            vetos[currentUser] = restaurant;
-            const { error } = await supabase
-                .from('rounds')
-                .update({ vetos })
-                .eq('id', currentRound.id);
-            
-            if (!error) {
-                currentRound.vetos = vetos;
-                renderVetoList();
+        if (allVetoed || isPicker) {
+            btn.classList.remove('hidden');
+            btn.disabled = !allVetoed;
+            btn.textContent = isPicker ? 'Pick Winner' : 'Waiting...';
+            if (isPicker) {
+                btn.onclick = completeVeto;
+            }
+        } else {
+            btn.classList.add('hidden');
+        }
+    }
+
+    // Do veto
+    window.doVeto = function(restaurant) {
+        var vetos = {};
+        for (var key in currentRound.vetos) {
+            vetos[key] = currentRound.vetos[key];
+        }
+        vetos[currentUser] = restaurant;
+        
+        supabase.from('rounds')
+            .update({ vetos: vetos })
+            .eq('id', currentRound.id)
+            .then(function(result) {
+                if (!result.error) {
+                    currentRound.vetos = vetos;
+                    renderVetoList();
+                }
+            });
+    };
+
+    // Complete veto
+    function completeVeto() {
+        var suggestions = currentRound.suggestions || [];
+        var vetos = Object.values(currentRound.vetos || {});
+        var vetoed = vetos.filter(function(v, i, self) { return self.indexOf(v) === i; });
+        
+        var winner = null;
+        for (var i = 0; i < suggestions.length; i++) {
+            if (vetoed.indexOf(suggestions[i]) === -1) {
+                winner = suggestions[i];
+                break;
             }
         }
+        if (!winner) winner = currentRound.picker;
         
-        async function completeVeto() {
-            const suggestions = currentRound.suggestions || [];
-            const vetos = Object.values(currentRound.vetos || {});
-            const vetoed = [...new Set(vetos)];
-            
-            let winner = suggestions.find(s => !vetoed.includes(s));
-            if (!winner) winner = currentRound.picker;
-            
-            await supabase.from('history').insert({
+        // Save to history
+        supabase.from('history')
+            .insert({
                 round_id: currentRound.id,
                 date: new Date().toISOString().split('T')[0],
                 picker: currentRound.picker,
                 winner: winner,
                 suggestions: JSON.stringify(suggestions),
                 vetos: JSON.stringify(vetos)
+            })
+            .then(function() {
+                // Update round
+                supabase.from('rounds')
+                    .update({ phase: 'winner', winner: winner })
+                    .eq('id', currentRound.id)
+                    .then(function(result) {
+                        if (!result.error) {
+                            currentRound.phase = 'winner';
+                            currentRound.winner = winner;
+                            updateRoundDisplay();
+                            loadHistory();
+                        }
+                    });
             });
-            
-            const { error } = await supabase
-                .from('rounds')
-                .update({ phase: 'winner', winner })
-                .eq('id', currentRound.id);
-            
-            if (!error) {
-                currentRound.phase = 'winner';
-                currentRound.winner = winner;
-                updateRoundDisplay();
-                loadHistory();
-            }
-        }
-        
-        async function loadRestaurants() {
-            const { data, error } = await supabase
-                .from('restaurants')
-                .select('*')
-                .order('name');
-            
-            const list = document.getElementById('restaurant-list');
-            const restaurants = data || [];
-            
-            if (restaurants.length === 0) {
-                const defaults = ['El Toro', 'Chick-fil-A', 'Panera Bread', 'Texas Roadhouse', 
-                                 'Olive Garden', 'Outback', 'Applebee\'s', 'Buffalo Wild Wings'];
-                for (const name of defaults) {
-                    await supabase.from('restaurants').insert({ name });
+    }
+
+    // Complete veto button
+    document.getElementById('complete-veto-btn').onclick = function() {
+        completeVeto();
+    };
+
+    // Load restaurants
+    function loadRestaurants() {
+        console.log('Loading restaurants...');
+        supabase.from('restaurants')
+            .select('*')
+            .order('name')
+            .then(function(result) {
+                console.log('Restaurants result:', result);
+                var list = document.getElementById('restaurant-list');
+                var restaurants = result.data || [];
+                
+                if (restaurants.length === 0) {
+                    // Insert defaults
+                    var defaults = ['El Toro', 'Chick-fil-A', 'Panera Bread', 'Texas Roadhouse', 
+                                   'Olive Garden', 'Outback', "Applebee's", 'Buffalo Wild Wings'];
+                    var promises = [];
+                    for (var i = 0; i < defaults.length; i++) {
+                        promises.push(supabase.from('restaurants').insert({ name: defaults[i] }));
+                    }
+                    Promise.all(promises).then(function() {
+                        loadRestaurants();
+                    });
+                    return;
                 }
+                
+                var html = '';
+                for (var i = 0; i < restaurants.length; i++) {
+                    var r = restaurants[i];
+                    html += '<div class="restaurant-item"><span>' + r.name + '</span>';
+                    html += '<span class="delete-btn" onclick="deleteRestaurant(\'' + r.id + '\')">✕</span></div>';
+                }
+                list.innerHTML = html;
+            });
+    }
+
+    // Add restaurant
+    document.getElementById('add-restaurant-btn').onclick = function() {
+        var input = document.getElementById('new-restaurant');
+        var name = input.value.trim();
+        if (!name) return;
+        
+        console.log('Adding restaurant:', name);
+        supabase.from('restaurants')
+            .insert({ name: name })
+            .then(function(result) {
+                console.log('Add result:', result);
+                input.value = '';
                 loadRestaurants();
-                return;
-            }
-            
-            list.innerHTML = restaurants.map(r => 
-                '<div class="restaurant-item"><span>' + r.name + '</span>' +
-                '<span class="delete-btn" onclick="window.deleteRestaurant(\'' + r.id + '\')">✕</span></div>'
-            ).join('');
-        }
-        
-        async function addRestaurant() {
-            const input = document.getElementById('new-restaurant');
-            const name = input.value.trim();
-            if (!name) return;
-            await supabase.from('restaurants').insert({ name });
-            input.value = '';
-            loadRestaurants();
-        }
-        
-        async function deleteRestaurant(id) {
-            await supabase.from('restaurants').delete().eq('id', id);
-            loadRestaurants();
-        }
-        
-        async function loadHistory() {
-            const { data, error } = await supabase
-                .from('history')
-                .select('*')
-                .order('date', { ascending: false });
-            
-            const list = document.getElementById('history-list');
-            const history = data || [];
-            
-            if (history.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:#888;padding:40px;">No history yet!</p>';
-                return;
-            }
-            
-            list.innerHTML = history.map(h => 
-                '<div class="history-item"><div class="history-date">' + h.date + '</div>' +
-                '<div class="history-winner">🏆 ' + h.winner + '</div>' +
-                '<div class="history-picker">Picker: ' + h.picker + '</div></div>'
-            ).join('');
-        }
-        
-        // Attach event listeners
-        document.getElementById('login-btn').addEventListener('click', doLogin);
-        document.getElementById('logout-btn').addEventListener('click', doLogout);
-        document.getElementById('nav-dash').addEventListener('click', function() { 
-            console.log('Dashboard clicked');
-            showTab('dashboard'); 
-        });
-        document.getElementById('nav-rest').addEventListener('click', function() { 
-            console.log('Restaurants clicked');
-            showTab('restaurants'); 
-        });
-        document.getElementById('nav-hist').addEventListener('click', function() { 
-            console.log('History clicked');
-            showTab('history'); 
-        });
-        document.getElementById('add-restaurant-btn').addEventListener('click', addRestaurant);
-        document.getElementById('new-round-btn').addEventListener('click', startNewRound);
-        
-        // Expose functions globally for onclick handlers
-        window.removeSuggestion = removeSuggestion;
-        window.doVeto = doVeto;
-        window.deleteRestaurant = deleteRestaurant;
-        
-        // Start
-        init();
-        console.log('App started');
-    })();
+            });
+    };
+
+    // Delete restaurant
+    window.deleteRestaurant = function(id) {
+        console.log('Deleting restaurant:', id);
+        supabase.from('restaurants')
+            .delete()
+            .eq('id', id)
+            .then(function(result) {
+                console.log('Delete result:', result);
+                loadRestaurants();
+            });
+    };
+
+    // Load history
+    function loadHistory() {
+        console.log('Loading history...');
+        supabase.from('history')
+            .select('*')
+            .order('date', { ascending: false })
+            .then(function(result) {
+                console.log('History result:', result);
+                var list = document.getElementById('history-list');
+                var history = result.data || [];
+                
+                if (history.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:#888;padding:40px;">No history yet!</p>';
+                    return;
+                }
+                
+                var html = '';
+                for (var i = 0; i < history.length; i++) {
+                    var h = history[i];
+                    html += '<div class="history-item"><div class="history-date">' + h.date + '</div>';
+                    html += '<div class="history-winner">🏆 ' + h.winner + '</div>';
+                    html += '<div class="history-picker">Picker: ' + h.picker + '</div></div>';
+                }
+                list.innerHTML = html;
+            });
+    }
+
+    console.log('Script loaded');
     </script>
 </body>
 </html>
