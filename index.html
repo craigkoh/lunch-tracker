@@ -202,10 +202,25 @@
         }
         
         function showTab(tab) {
-            document.querySelectorAll('.content > div').forEach(d => d.classList.add('hidden'));
+            console.log('showTab:', tab);
+            // Hide all tabs
+            document.getElementById('tab-dashboard').classList.add('hidden');
+            document.getElementById('tab-restaurants').classList.add('hidden');
+            document.getElementById('tab-history').classList.add('hidden');
+            
+            // Show selected tab
             document.getElementById('tab-' + tab).classList.remove('hidden');
-            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+            
+            // Update nav buttons
+            document.getElementById('nav-dash').classList.remove('active');
+            document.getElementById('nav-rest').classList.remove('active');
+            document.getElementById('nav-hist').classList.remove('active');
+            
             document.getElementById('nav-' + tab.substring(0,4)).classList.add('active');
+            
+            // Load tab data
+            if (tab === 'restaurants') loadRestaurants();
+            if (tab === 'history') loadHistory();
         }
         
         async function loadAll() {
@@ -518,9 +533,18 @@
         // Attach event listeners
         document.getElementById('login-btn').addEventListener('click', doLogin);
         document.getElementById('logout-btn').addEventListener('click', doLogout);
-        document.getElementById('nav-dash').addEventListener('click', function() { showTab('dashboard'); });
-        document.getElementById('nav-rest').addEventListener('click', function() { showTab('restaurants'); });
-        document.getElementById('nav-hist').addEventListener('click', function() { showTab('history'); });
+        document.getElementById('nav-dash').addEventListener('click', function() { 
+            console.log('Dashboard clicked');
+            showTab('dashboard'); 
+        });
+        document.getElementById('nav-rest').addEventListener('click', function() { 
+            console.log('Restaurants clicked');
+            showTab('restaurants'); 
+        });
+        document.getElementById('nav-hist').addEventListener('click', function() { 
+            console.log('History clicked');
+            showTab('history'); 
+        });
         document.getElementById('add-restaurant-btn').addEventListener('click', addRestaurant);
         document.getElementById('new-round-btn').addEventListener('click', startNewRound);
         
