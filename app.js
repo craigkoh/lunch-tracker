@@ -9,31 +9,39 @@ let currentRound = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    alert('App initializing...'); // Debug
+    console.log('App initializing...');
     
     // Check if Supabase is configured
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-        alert('Supabase not configured'); // Debug
+        console.log('Supabase not configured');
         showSetupNeeded();
         return;
     }
 
     // Initialize Supabase
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    alert('Supabase initialized'); // Debug
+    console.log('Supabase initialized');
 
     // Check for existing session
     const savedName = localStorage.getItem('lunchUserName');
     const savedLower = localStorage.getItem('lunchUserLower');
     if (savedName && savedLower) {
-        alert('Found existing session: ' + savedName); // Debug
+        console.log('Found existing session:', savedName);
         currentUser = savedLower;
         showMainScreen(savedName);
         loadData();
     } else {
-        alert('No existing session'); // Debug
+        console.log('No existing session');
     }
 });
+
+// Test function for debugging
+function testLogin() {
+    console.log('Testing login...');
+    document.getElementById('username').value = 'Test';
+    document.getElementById('password').value = 'doug_rocks';
+    login();
+}
 
 function showSetupNeeded() {
     document.getElementById('login-screen').innerHTML = `
@@ -52,26 +60,27 @@ function showSetupNeeded() {
 }
 
 function login() {
-    alert('Login clicked!'); // Debug
+    console.log('Login function called');
     const name = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
-    alert('Name: ' + name + ', Password: ' + password); // Debug
+    console.log('Name:', name, 'Password:', password);
 
     if (!name || !password) {
         document.getElementById('login-error').textContent = 'Please fill in both fields';
+        console.log('Missing name or password');
         return;
     }
 
     if (password !== SHARED_PASSWORD) {
         document.getElementById('login-error').textContent = 'Incorrect password';
-        alert('Wrong password: ' + password + ' != ' + SHARED_PASSWORD); // Debug
+        console.log('Wrong password');
         return;
     }
 
+    console.log('Login successful');
     currentUser = name.toLowerCase();
     localStorage.setItem('lunchUserName', name);
     localStorage.setItem('lunchUserLower', currentUser);
-    alert('Login successful, showing main screen'); // Debug
     showMainScreen(name);
     loadData();
 }
